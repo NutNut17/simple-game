@@ -109,7 +109,7 @@ export default function RevealGame({ theme, title, subtitle, onExit }: RevealGam
                 </span>
              ) : (
                 <img 
-                  src={`/themes/${theme}/${currentValue}.${themeConfig.extension || 'png'}`}
+                  src={`${import.meta.env.BASE_URL}themes/${theme}/${currentValue}.${themeConfig.extension || 'png'}`}
                   className="w-full h-full object-contain pointer-events-none select-none"
                   alt="Hidden"
                 />

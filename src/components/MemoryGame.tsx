@@ -284,7 +284,7 @@ export default function MemoryGame({ mode, theme, gridSize: initialGridSize, tit
                    ) : (
                      <div className="w-full h-full p-1 sm:p-2 flex flex-col items-center justify-center">
                         <img 
-                          src={`/themes/${theme}/${card.value}${themeConfig.extension ? `.${themeConfig.extension}` : ''}`} 
+                          src={`${import.meta.env.BASE_URL}themes/${theme}/${card.value}.${themeConfig.extension || 'png'}`} 
                           alt={card.value}
                           onError={(e) => {
                             (e.target as HTMLImageElement).style.display = 'none';

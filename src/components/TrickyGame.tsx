@@ -45,7 +45,7 @@ export default function TrickyGame({ title, subtitle, onExit }: TrickyGameProps)
     setHoles(prev => [...prev, { x, y, id: Math.random() }]);
   };
 
-  const imagePath = `/tricky-image/${currentValue}.png`;
+  const imagePath = `${import.meta.env.BASE_URL}tricky-image/${currentValue}.${themeConfig.extension || 'png'}`;
 
   return (
     <div className={`flex-1 flex flex-col ${themeConfig.colors.bg} overflow-hidden relative w-full h-full`}>

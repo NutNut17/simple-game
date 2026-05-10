@@ -256,7 +256,7 @@ export default function DetectGame({ theme, title, subtitle, onExit }: DetectGam
                  </span>
                ) : (
                  <img 
-                    src={`/themes/${theme}/${card.value}.${themeConfig.extension || 'png'}`} 
+                    src={`${import.meta.env.BASE_URL}themes/${theme}/${card.value}.${themeConfig.extension || 'png'}`} 
                     className="w-full h-full object-contain p-4 select-none"
                     alt={card.value}
                     onError={(e) => {
