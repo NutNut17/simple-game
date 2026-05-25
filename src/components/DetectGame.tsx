@@ -29,6 +29,8 @@ export default function DetectGame({ theme, title, subtitle, onExit }: DetectGam
   const [dirMode, setDirMode] = useState<DirectionMode>(1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeCards, setActiveCards] = useState<FlyingCard[]>([]);
+  const [rangeStart, setRangeStart] = useState(0);
+  const [rangeEnd, setRangeEnd] = useState(7);
 
   const themeConfig = THEMES[theme];
 
@@ -46,7 +48,13 @@ export default function DetectGame({ theme, title, subtitle, onExit }: DetectGam
   };
 
   const getRandomValue = (exclude?: string) => {
-    const images = themeConfig.images;
+    let images = [...themeConfig.images];
+    if (theme === 'alphabet') {
+      const start = Math.min(rangeStart, rangeEnd);
+      const end = Math.max(rangeStart, rangeEnd);
+      images = themeConfig.images.slice(start, end + 1);
+    }
+
     if (!images || images.length === 0) return '⭐';
     let val = images[Math.floor(Math.random() * images.length)];
     if (exclude && images.length > 1) {
@@ -73,7 +81,7 @@ export default function DetectGame({ theme, title, subtitle, onExit }: DetectGam
     ];
 
     const newCards: FlyingCard[] = Array.from({ length: count }).map((_, i) => {
-      let startIdx = 1; 
+      let startIdx = 1;
       let endIdx = 3;
 
       if (dirMode === 1 || dirMode === 2) {
@@ -84,7 +92,7 @@ export default function DetectGame({ theme, title, subtitle, onExit }: DetectGam
         endIdx = (startIdx + 2) % 4; // Opposite side 
       }
 
-      const getOffset = () => `${(Math.random() * 80 + 10)}%`; 
+      const getOffset = () => `${(Math.random() * 80 + 10)}%`;
       const start = { ...sides[startIdx] };
       const end = { ...sides[endIdx] };
 
@@ -113,7 +121,7 @@ export default function DetectGame({ theme, title, subtitle, onExit }: DetectGam
       };
     });
 
-    setActiveCards([]); 
+    setActiveCards([]);
     setIsPlaying(true);
     setTimeout(() => {
       setActiveCards(newCards);
@@ -133,7 +141,7 @@ export default function DetectGame({ theme, title, subtitle, onExit }: DetectGam
             <ArrowLeft size={18} strokeWidth={3} />
             <span className="hidden sm:inline">EXIT</span>
           </button>
-          
+
           <div className="hidden md:block text-white">
             <h3 className="font-display font-black text-white text-lg leading-none">{title}</h3>
             <p className="text-[10px] uppercase font-black opacity-60 mt-1">{subtitle}</p>
@@ -147,8 +155,8 @@ export default function DetectGame({ theme, title, subtitle, onExit }: DetectGam
           <div className="flex bg-black/20 p-1 rounded-xl items-center gap-1 px-2 h-10 border border-white/5">
             <Zap size={12} className="text-brand-accent mr-1" fill="currentColor" />
             {[1, 2, 3, 4, 5].map(lv => (
-              <button 
-                key={lv} 
+              <button
+                key={lv}
                 onClick={() => setSpeed(lv as SpeedLevel)}
                 className={`w-7 h-7 rounded-lg font-black text-[10px] transition-all ${speed === lv ? 'bg-white text-brand-dark shadow-xl' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
               >
@@ -158,40 +166,66 @@ export default function DetectGame({ theme, title, subtitle, onExit }: DetectGam
           </div>
 
           <div className="hidden lg:flex bg-black/20 p-1 pl-3 rounded-xl items-center gap-2 h-10 border border-white/5">
-             <Hash size={12} className="text-white/30" />
-             <input 
-               type="number" 
-               min="1" 
-               max="50"
-               value={count}
-               onChange={(e) => setCount(Math.min(50, Math.max(1, parseInt(e.target.value) || 1)))}
-               className="w-8 bg-transparent text-white font-black text-center focus:outline-none appearance-none text-[10px]"
-             />
-             <div className="flex flex-col gap-0 pr-1">
-                <button onClick={() => setCount(s => Math.min(50, s + 1))} className="text-white/30 hover:text-white leading-none text-[6px]">▲</button>
-                <button onClick={() => setCount(s => Math.max(1, s - 1))} className="text-white/30 hover:text-white leading-none text-[6px]">▼</button>
-             </div>
+            <Hash size={12} className="text-white/30" />
+            <input
+              type="number"
+              min="1"
+              max="50"
+              value={count}
+              onChange={(e) => setCount(Math.min(50, Math.max(1, parseInt(e.target.value) || 1)))}
+              className="w-8 bg-transparent text-white font-black text-center focus:outline-none appearance-none text-[10px]"
+            />
+            <div className="flex flex-col gap-0 pr-1">
+              <button onClick={() => setCount(s => Math.min(50, s + 1))} className="text-white/30 hover:text-white leading-none text-[6px]">▲</button>
+              <button onClick={() => setCount(s => Math.max(1, s - 1))} className="text-white/30 hover:text-white leading-none text-[6px]">▼</button>
+            </div>
           </div>
 
           <div className="flex bg-black/20 p-1 rounded-xl items-center gap-0.5 h-10 border border-white/5">
-             <button onClick={() => setDirMode(1)} className={`p-1.5 px-3 rounded-lg transition-all ${dirMode === 1 ? 'bg-white text-brand-dark shadow-md' : 'text-white/40 hover:bg-white/5'}`} title="Sequential">
-                <MoveRight size={16} />
-             </button>
-             <button onClick={() => setDirMode(2)} className={`p-1.5 px-3 rounded-lg transition-all ${dirMode === 2 ? 'bg-white text-brand-dark shadow-md' : 'text-white/40 hover:bg-white/5'}`} title="Simultaneous">
-                <div className="flex items-center">
-                  <MoveRight size={12} />
-                  <Shuffle size={10} className="-ml-1 opacity-50" />
-                </div>
-             </button>
-             <button onClick={() => setDirMode(3)} className={`p-1.5 px-3 rounded-lg transition-all ${dirMode === 3 ? 'bg-white text-brand-dark shadow-md' : 'text-white/40 hover:bg-white/5'}`} title="Random">
-                <Shuffle size={16} />
-             </button>
+            <button onClick={() => setDirMode(1)} className={`p-1.5 px-3 rounded-lg transition-all ${dirMode === 1 ? 'bg-white text-brand-dark shadow-md' : 'text-white/40 hover:bg-white/5'}`} title="Sequential">
+              <MoveRight size={16} />
+            </button>
+            <button onClick={() => setDirMode(2)} className={`p-1.5 px-3 rounded-lg transition-all ${dirMode === 2 ? 'bg-white text-brand-dark shadow-md' : 'text-white/40 hover:bg-white/5'}`} title="Simultaneous">
+              <div className="flex items-center">
+                <MoveRight size={12} />
+                <Shuffle size={10} className="-ml-1 opacity-50" />
+              </div>
+            </button>
+            <button onClick={() => setDirMode(3)} className={`p-1.5 px-3 rounded-lg transition-all ${dirMode === 3 ? 'bg-white text-brand-dark shadow-md' : 'text-white/40 hover:bg-white/5'}`} title="Random">
+              <Shuffle size={16} />
+            </button>
           </div>
+
+          {/* Alphabet Range Selector */}
+          {theme === 'alphabet' && (
+            <div className="hidden lg:flex items-center gap-2 bg-black/20 p-1 px-3 rounded-xl border border-white/10 h-10 border border-white/5">
+              <span className="text-[9px] font-black text-white/50 uppercase">Range</span>
+              <select
+                value={rangeStart}
+                onChange={(e) => setRangeStart(parseInt(e.target.value))}
+                className="bg-transparent text-white font-black text-xs outline-none cursor-pointer"
+              >
+                {themeConfig.images.map((img, i) => (
+                  <option key={img} value={i} className="bg-indigo-900">{img}</option>
+                ))}
+              </select>
+              <span className="text-white/30">-</span>
+              <select
+                value={rangeEnd}
+                onChange={(e) => setRangeEnd(parseInt(e.target.value))}
+                className="bg-transparent text-white font-black text-xs outline-none cursor-pointer"
+              >
+                {themeConfig.images.map((img, i) => (
+                  <option key={img} value={i} disabled={i < rangeStart} className="bg-indigo-900">{img}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
-        
+
         {/* Right Side: Start Action */}
         <div className="flex items-center gap-3">
-          <button 
+          <button
             onClick={spawnRound}
             className="bg-brand-accent text-brand-dark px-6 py-2 rounded-xl font-black shadow-lg hover:brightness-110 active:scale-95 transition-all text-[10px] tracking-wider uppercase"
           >
@@ -212,10 +246,10 @@ export default function DetectGame({ theme, title, subtitle, onExit }: DetectGam
             onClick={spawnRound}
             className="flex flex-col items-center gap-8 z-40 group"
           >
-             <div className="w-32 h-32 bg-white/5 border-2 border-dashed border-white/20 rounded-full flex items-center justify-center transition-all group-hover:bg-white/10 group-hover:border-white/40 group-hover:shadow-[0_0_30px_rgba(255,255,255,0.1)]">
-                <Play className="text-white ml-1 opacity-40 group-hover:opacity-100 transition-opacity" size={48} fill="currentColor" />
-             </div>
-             <p className="text-white font-black tracking-[0.5em] text-[11px] uppercase opacity-20 group-hover:opacity-60 transition-opacity">Launch Detection</p>
+            <div className="w-32 h-32 bg-white/5 border-2 border-dashed border-white/20 rounded-full flex items-center justify-center transition-all group-hover:bg-white/10 group-hover:border-white/40 group-hover:shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+              <Play className="text-white ml-1 opacity-40 group-hover:opacity-100 transition-opacity" size={48} fill="currentColor" />
+            </div>
+            <p className="text-white font-black tracking-[0.5em] text-[11px] uppercase opacity-20 group-hover:opacity-60 transition-opacity">Launch Detection</p>
           </motion.button>
         )}
 
@@ -223,18 +257,18 @@ export default function DetectGame({ theme, title, subtitle, onExit }: DetectGam
           {isPlaying && activeCards.map((card, idx) => (
             <motion.div
               key={card.id}
-              initial={{ 
-                left: card.startPos.x, 
-                top: card.startPos.y, 
+              initial={{
+                left: card.startPos.x,
+                top: card.startPos.y,
                 opacity: 0
               }}
-              animate={{ 
-                left: card.endPos.x, 
+              animate={{
+                left: card.endPos.x,
                 top: card.endPos.y,
                 opacity: [0, 1, 1, 0]
               }}
-              transition={{ 
-                duration: card.duration, 
+              transition={{
+                duration: card.duration,
                 ease: "linear",
                 delay: card.delay,
                 opacity: {
@@ -250,27 +284,27 @@ export default function DetectGame({ theme, title, subtitle, onExit }: DetectGam
               style={{ transform: 'translate(-50%, -50%)' }}
               className="absolute w-28 h-28 sm:w-48 sm:h-48 bg-white rounded-[40px] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-4 border-black flex items-center justify-center z-20 pointer-events-none"
             >
-               {theme === 'alphabet' ? (
-                 <span className="text-7xl sm:text-[10rem] font-black text-black select-none">
-                   {card.value}
-                 </span>
-               ) : (
-                 <img 
-                    src={`${import.meta.env.BASE_URL}themes/${theme}/${card.value}.${themeConfig.extension || 'png'}`} 
-                    className="w-full h-full object-contain p-4 select-none"
-                    alt={card.value}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                 />
-               )}
+              {theme === 'alphabet' ? (
+                <span className="text-7xl sm:text-[10rem] font-black text-black select-none">
+                  {card.value}
+                </span>
+              ) : (
+                <img
+                  src={`${import.meta.env.BASE_URL}themes/${theme}/${card.value}.${themeConfig.extension || 'png'}`}
+                  className="w-full h-full object-contain p-4 select-none"
+                  alt={card.value}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              )}
             </motion.div>
           ))}
         </AnimatePresence>
 
         {/* Dynamic Watermark */}
         <div className="absolute bottom-10 right-10 opacity-5 pointer-events-none">
-           <Zap size={200} className="text-white" fill="currentColor" />
+          <Zap size={200} className="text-white" fill="currentColor" />
         </div>
       </div>
     </div>

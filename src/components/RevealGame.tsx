@@ -20,11 +20,19 @@ export default function RevealGame({ theme, title, subtitle, onExit }: RevealGam
   const [currentValue, setCurrentValue] = useState('');
   const [holes, setHoles] = useState<Hole[]>([]);
   const [isRevealed, setIsRevealed] = useState(false);
+  const [rangeStart, setRangeStart] = useState(0);
+  const [rangeEnd, setRangeEnd] = useState(7);
   const containerRef = useRef<HTMLDivElement>(null);
   const themeConfig = THEMES[theme];
 
   const spawnNewImage = () => {
-    const images = themeConfig.images;
+    let images = [...themeConfig.images];
+    if (theme === 'alphabet') {
+      const start = Math.min(rangeStart, rangeEnd);
+      const end = Math.max(rangeStart, rangeEnd);
+      images = themeConfig.images.slice(start, end + 1);
+    }
+
     if (!images || images.length === 0) return;
     const next = images[Math.floor(Math.random() * images.length)];
     setCurrentValue(next);
@@ -34,7 +42,7 @@ export default function RevealGame({ theme, title, subtitle, onExit }: RevealGam
 
   useEffect(() => {
     spawnNewImage();
-  }, [theme]);
+  }, [theme, rangeStart, rangeEnd]);
 
   const handlePaperClick = (e: React.MouseEvent) => {
     if (isRevealed || !containerRef.current) return;
@@ -59,7 +67,7 @@ export default function RevealGame({ theme, title, subtitle, onExit }: RevealGam
             <ArrowLeft size={18} strokeWidth={3} />
             <span className="hidden sm:inline">EXIT</span>
           </button>
-          
+
           <div className="hidden md:block text-white">
             <h3 className="font-display font-black text-white text-lg leading-none">{title}</h3>
             <p className="text-[10px] uppercase font-black opacity-60 mt-1">{subtitle}</p>
@@ -74,15 +82,41 @@ export default function RevealGame({ theme, title, subtitle, onExit }: RevealGam
         </div>
 
         {/* Right Side: Actions */}
-        <div className="flex gap-2">
-          <button 
+        <div className="flex gap-2 items-center">
+          {/* Alphabet Range Selector */}
+          {theme === 'alphabet' && (
+            <div className="hidden lg:flex items-center gap-2 bg-black/20 p-1 px-3 rounded-xl border border-white/10 h-10 mr-2">
+              <span className="text-[9px] font-black text-white/50 uppercase">Range</span>
+              <select
+                value={rangeStart}
+                onChange={(e) => setRangeStart(parseInt(e.target.value))}
+                className="bg-transparent text-white font-black text-xs outline-none cursor-pointer"
+              >
+                {themeConfig.images.map((img, i) => (
+                  <option key={img} value={i} className="bg-indigo-900">{img}</option>
+                ))}
+              </select>
+              <span className="text-white/30">-</span>
+              <select
+                value={rangeEnd}
+                onChange={(e) => setRangeEnd(parseInt(e.target.value))}
+                className="bg-transparent text-white font-black text-xs outline-none cursor-pointer"
+              >
+                {themeConfig.images.map((img, i) => (
+                  <option key={img} value={i} disabled={i < rangeStart} className="bg-indigo-900">{img}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <button
             onClick={() => setIsRevealed(true)}
             className="bg-brand-accent text-brand-dark px-6 py-2 rounded-xl font-black shadow-lg hover:brightness-110 active:scale-95 transition-all text-[10px] uppercase tracking-wider flex items-center gap-2"
           >
             <Eye size={14} />
             Show Answer
           </button>
-          <button 
+          <button
             onClick={spawnNewImage}
             className="bg-white/10 text-white px-3 py-2 rounded-xl font-black border border-white/10 hover:bg-white/20 transition-all"
           >
@@ -96,30 +130,30 @@ export default function RevealGame({ theme, title, subtitle, onExit }: RevealGam
 
       {/* Play Area */}
       <div className="flex-1 flex items-center justify-center p-8">
-        <div 
+        <div
           ref={containerRef}
           onClick={handlePaperClick}
           className="relative w-full max-w-2xl aspect-square bg-white rounded-[40px] shadow-2xl border-[12px] border-white/20 overflow-hidden cursor-crosshair group"
         >
           {/* Hidden Image */}
           <div className="absolute inset-0 flex items-center justify-center p-12 bg-gray-50">
-             {theme === 'alphabet' ? (
-                <span className="text-[15rem] font-black text-black select-none">
-                  {currentValue}
-                </span>
-             ) : (
-                <img 
-                  src={`${import.meta.env.BASE_URL}themes/${theme}/${currentValue}.${themeConfig.extension || 'png'}`}
-                  className="w-full h-full object-contain pointer-events-none select-none"
-                  alt="Hidden"
-                />
-             )}
+            {theme === 'alphabet' ? (
+              <span className="text-[15rem] font-black text-black select-none">
+                {currentValue}
+              </span>
+            ) : (
+              <img
+                src={`${import.meta.env.BASE_URL}themes/${theme}/${currentValue}.${themeConfig.extension || 'png'}`}
+                className="w-full h-full object-contain pointer-events-none select-none"
+                alt="Hidden"
+              />
+            )}
           </div>
 
           {/* Paper Cover with Mask */}
           <AnimatePresence>
             {!isRevealed && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -135,16 +169,16 @@ export default function RevealGame({ theme, title, subtitle, onExit }: RevealGam
                       ))}
                     </mask>
                   </defs>
-                  <rect 
-                    x="0" y="0" width="100" height="100" 
-                    fill="currentColor" 
+                  <rect
+                    x="0" y="0" width="100" height="100"
+                    fill="currentColor"
                     className="text-gray-300"
                     mask="url(#holeMask)"
                   />
                   {/* Paper texture/noise simulation */}
-                  <rect 
-                    x="0" y="0" width="100" height="100" 
-                    fill="url(#noisePattern)" 
+                  <rect
+                    x="0" y="0" width="100" height="100"
+                    fill="url(#noisePattern)"
                     className="opacity-40"
                     mask="url(#holeMask)"
                     pointerEvents="none"
@@ -167,7 +201,7 @@ export default function RevealGame({ theme, title, subtitle, onExit }: RevealGam
           {/* Reveal Feedback */}
           <AnimatePresence>
             {isRevealed && (
-              <motion.div 
+              <motion.div
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 className="absolute bottom-10 left-1/2 -translate-x-1/2 bg-brand-primary text-white px-10 py-4 rounded-3xl shadow-2xl font-black text-2xl uppercase tracking-tighter flex items-center gap-4 z-20 border-4 border-white"
@@ -179,15 +213,15 @@ export default function RevealGame({ theme, title, subtitle, onExit }: RevealGam
           </AnimatePresence>
         </div>
       </div>
-      
+
       {/* SVG Definitions */}
       <svg className="hidden">
         <defs>
           <pattern id="noisePattern" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
-             <rect width="10" height="10" fill="white" />
-             <circle cx="2" cy="2" r="0.5" fill="#ddd" />
-             <circle cx="7" cy="6" r="0.8" fill="#ccc" />
-             <circle cx="4" cy="8" r="0.3" fill="#eee" />
+            <rect width="10" height="10" fill="white" />
+            <circle cx="2" cy="2" r="0.5" fill="#ddd" />
+            <circle cx="7" cy="6" r="0.8" fill="#ccc" />
+            <circle cx="4" cy="8" r="0.3" fill="#eee" />
           </pattern>
         </defs>
       </svg>

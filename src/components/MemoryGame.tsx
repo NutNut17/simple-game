@@ -36,21 +36,31 @@ export default function MemoryGame({ mode, theme, gridSize: initialGridSize, tit
   const initGame = () => {
     const totalCells = gridSize * gridSize;
     const numPairs = Math.floor(totalCells / 2);
-    
+
     let availableImages = [...themeConfig.images];
-    
+
     if (theme === 'alphabet') {
-      availableImages = themeConfig.images.slice(rangeStart, rangeEnd + 1);
+      const start = Math.min(rangeStart, rangeEnd);
+      const end = Math.max(rangeStart, rangeEnd);
+      availableImages = themeConfig.images.slice(start, end + 1);
+    }
+
+    if (availableImages.length === 0) {
+      availableImages = [themeConfig.images[0]];
     }
 
     // Ensure we have enough images by repeating if necessary, or just using what we have
     let pool = [...availableImages];
-    while (pool.length < (mode === 'v2' ? numPairs : totalCells)) {
-      pool = [...pool, ...availableImages];
+    const targetSize = mode === 'v2' ? numPairs : totalCells;
+
+    if (pool.length > 0) {
+      while (pool.length < targetSize) {
+        pool = [...pool, ...availableImages];
+      }
     }
-    
+
     const selectedImages = pool.slice(0, mode === 'v2' ? numPairs : totalCells);
-    
+
     let values: string[] = [];
     if (mode === 'v2') {
       values = [...selectedImages, ...selectedImages];
@@ -74,7 +84,7 @@ export default function MemoryGame({ mode, theme, gridSize: initialGridSize, tit
     setIsWon(false);
     setFlippedCards([]);
     setAllFlipped(mode === 'v1');
-    
+
     if (mode === 'v1') {
       setPreviewActive(true);
       setTimeLeft(10);
@@ -101,7 +111,7 @@ export default function MemoryGame({ mode, theme, gridSize: initialGridSize, tit
 
     if (mode === 'v1') {
       // Independent flipping for Game 1
-      setCards(prev => prev.map(c => 
+      setCards(prev => prev.map(c =>
         c.id === id ? { ...c, isFlipped: !c.isFlipped } : c
       ));
       setMoves(m => m + 1);
@@ -124,14 +134,14 @@ export default function MemoryGame({ mode, theme, gridSize: initialGridSize, tit
 
       if (cards[firstId].value === cards[secondId].value) {
         setTimeout(() => {
-          setCards(prev => prev.map(c => 
+          setCards(prev => prev.map(c =>
             (c.id === firstId || c.id === secondId) ? { ...c, isMatched: true } : c
           ));
           setFlippedCards([]);
         }, 500);
       } else {
         setTimeout(() => {
-          setCards(prev => prev.map(c => 
+          setCards(prev => prev.map(c =>
             (c.id === firstId || c.id === secondId) ? { ...c, isFlipped: false } : c
           ));
           setFlippedCards([]);
@@ -165,7 +175,7 @@ export default function MemoryGame({ mode, theme, gridSize: initialGridSize, tit
             <ArrowLeft size={18} strokeWidth={3} />
             <span className="hidden sm:inline">EXIT</span>
           </button>
-          
+
           <div className="hidden md:block text-white">
             <h3 className="font-display font-black text-white text-lg leading-none">{title}</h3>
             <p className="text-[10px] uppercase font-black opacity-60 mt-1">{subtitle}</p>
@@ -179,23 +189,23 @@ export default function MemoryGame({ mode, theme, gridSize: initialGridSize, tit
               <p className="text-[10px] font-black uppercase opacity-60 leading-none">Moves</p>
               <p className="text-xl font-display font-black uppercase">{moves}</p>
             </div>
-            
+
             {mode === 'v1' && (
               <div className="flex items-center gap-2">
-                 {previewActive ? (
-                   <div className="flex items-center gap-2 bg-brand-accent px-3 py-1.5 rounded-xl text-black shadow-lg">
-                      <Clock size={16} className="animate-spin" />
-                      <span className="font-display font-black text-xl">0:{timeLeft.toString().padStart(2, '0')}</span>
-                   </div>
-                 ) : (
-                   <button
+                {previewActive ? (
+                  <div className="flex items-center gap-2 bg-brand-accent px-3 py-1.5 rounded-xl text-black shadow-lg">
+                    <Clock size={16} className="animate-spin" />
+                    <span className="font-display font-black text-xl">0:{timeLeft.toString().padStart(2, '0')}</span>
+                  </div>
+                ) : (
+                  <button
                     onClick={toggleAll}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-[10px] transition-all ${allFlipped ? 'bg-brand-accent text-brand-dark' : 'bg-white/20 text-white hover:bg-white/30'}`}
-                   >
-                     {allFlipped ? <EyeOff size={14} /> : <Eye size={14} />}
-                     <span className="hidden sm:inline">{allFlipped ? 'HIDE ALL' : 'SHOW ALL'}</span>
-                   </button>
-                 )}
+                  >
+                    {allFlipped ? <EyeOff size={14} /> : <Eye size={14} />}
+                    <span className="hidden sm:inline">{allFlipped ? 'HIDE ALL' : 'SHOW ALL'}</span>
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -207,7 +217,7 @@ export default function MemoryGame({ mode, theme, gridSize: initialGridSize, tit
           {theme === 'alphabet' && (
             <div className="hidden lg:flex items-center gap-2 bg-black/20 p-1 px-3 rounded-xl border border-white/10 h-10">
               <span className="text-[9px] font-black text-white/50 uppercase">Range</span>
-              <select 
+              <select
                 value={rangeStart}
                 onChange={(e) => setRangeStart(parseInt(e.target.value))}
                 className="bg-transparent text-white font-black text-xs outline-none cursor-pointer"
@@ -217,7 +227,7 @@ export default function MemoryGame({ mode, theme, gridSize: initialGridSize, tit
                 ))}
               </select>
               <span className="text-white/30">-</span>
-              <select 
+              <select
                 value={rangeEnd}
                 onChange={(e) => setRangeEnd(parseInt(e.target.value))}
                 className="bg-transparent text-white font-black text-xs outline-none cursor-pointer"
@@ -231,19 +241,19 @@ export default function MemoryGame({ mode, theme, gridSize: initialGridSize, tit
 
           {/* Grid Size Toggle */}
           <div className="flex bg-black/20 p-1 rounded-xl h-10">
-             {[2, 3, 4, 5, 6].map(size => (
-               <button
-                 key={size}
-                 disabled={mode === 'v2' && (size * size) % 2 !== 0}
-                 onClick={() => setGridSize(size as GridSize)}
-                 className={`w-8 h-full rounded-lg font-black text-xs flex items-center justify-center transition-all disabled:opacity-20 ${gridSize === size ? 'bg-white text-brand-dark shadow-lg' : 'text-white hover:bg-white/10'}`}
-               >
-                 {size}
-               </button>
-             ))}
+            {[2, 3, 4, 5, 6].map(size => (
+              <button
+                key={size}
+                disabled={mode === 'v2' && (size * size) % 2 !== 0}
+                onClick={() => setGridSize(size as GridSize)}
+                className={`w-8 h-full rounded-lg font-black text-xs flex items-center justify-center transition-all disabled:opacity-20 ${gridSize === size ? 'bg-white text-brand-dark shadow-lg' : 'text-white hover:bg-white/10'}`}
+              >
+                {size}
+              </button>
+            ))}
           </div>
-          
-          <button 
+
+          <button
             onClick={initGame}
             className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all transform hover:rotate-180"
           >
@@ -257,7 +267,7 @@ export default function MemoryGame({ mode, theme, gridSize: initialGridSize, tit
       </div>
 
       <div className="flex-1 p-4 md:p-8 flex items-center justify-center overflow-hidden">
-        <div 
+        <div
           className={`grid gap-2 sm:gap-4 w-full h-full max-w-[85vh] max-h-[85vh] aspect-square mx-auto`}
           style={{ gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))` }}
         >
@@ -274,29 +284,29 @@ export default function MemoryGame({ mode, theme, gridSize: initialGridSize, tit
                 <div className={`absolute inset-0 ${themeConfig.colors.primary} ${themeConfig.colors.border} border-b-4 sm:border-b-8 rounded-xl sm:rounded-2xl flex items-center justify-center backface-hidden shadow-xl`}>
                   <div className="w-8 h-8 sm:w-12 sm:h-12 bg-white/20 rounded-full blur-xl animate-pulse" />
                 </div>
-                
+
                 {/* Front of card */}
                 <div className={`absolute inset-0 bg-white rounded-xl sm:rounded-2xl flex flex-col items-center justify-center rotate-y-180 backface-hidden shadow-2xl overflow-hidden ${card.isMatched ? 'ring-2 sm:ring-4 ring-green-400' : ''}`}>
-                   {theme === 'alphabet' ? (
-                     <span className={`font-black text-indigo-900 drop-shadow-sm ${gridSize >= 5 ? 'text-xl sm:text-3xl' : gridSize >= 4 ? 'text-2xl sm:text-5xl' : 'text-5xl sm:text-8xl'}`}>
+                  {theme === 'alphabet' ? (
+                    <span className={`font-black text-indigo-900 drop-shadow-sm ${gridSize >= 5 ? 'text-xl sm:text-3xl' : gridSize >= 4 ? 'text-2xl sm:text-5xl' : 'text-5xl sm:text-8xl'}`}>
                       {card.value}
-                     </span>
-                   ) : (
-                     <div className="w-full h-full p-1 sm:p-2 flex flex-col items-center justify-center">
-                        <img 
-                          src={`${import.meta.env.BASE_URL}themes/${theme}/${card.value}.${themeConfig.extension || 'png'}`} 
-                          alt={card.value}
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                            (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
-                          }}
-                          className="w-full h-full object-contain"
-                        />
-                        <span className="hidden text-sm sm:text-xl font-bold text-gray-700 uppercase p-2 text-center break-all leading-tight">
-                          {card.value}
-                        </span>
-                     </div>
-                   )}
+                    </span>
+                  ) : (
+                    <div className="w-full h-full p-1 sm:p-2 flex flex-col items-center justify-center">
+                      <img
+                        src={`${import.meta.env.BASE_URL}themes/${theme}/${card.value}.${themeConfig.extension || 'png'}`}
+                        alt={card.value}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                        }}
+                        className="w-full h-full object-contain"
+                      />
+                      <span className="hidden text-sm sm:text-xl font-bold text-gray-700 uppercase p-2 text-center break-all leading-tight">
+                        {card.value}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -306,31 +316,31 @@ export default function MemoryGame({ mode, theme, gridSize: initialGridSize, tit
 
       <AnimatePresence>
         {isWon && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.5 }}
             animate={{ opacity: 1, scale: 1 }}
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-xl p-6"
           >
             <div className="bg-white rounded-[50px] p-12 text-center max-w-sm w-full relative overflow-hidden">
-               <div className="absolute -top-10 -left-10 w-40 h-40 bg-brand-accent rounded-full opacity-20 blur-3xl" />
-               <Trophy className="w-24 h-24 text-brand-accent mx-auto mb-6 animate-bounce" />
-               <h2 className="text-5xl font-display font-black text-indigo-950 mb-2">VICTORY!</h2>
-               <p className="text-gray-500 font-bold mb-8 italic">You finished in {moves} moves!</p>
-               
-               <div className="flex flex-col gap-3">
-                 <button 
-                   onClick={initGame}
-                   className="w-full bg-brand-primary text-white py-4 rounded-2xl font-black text-xl shadow-xl hover:scale-105 transition-transform"
-                 >
-                   PLAY AGAIN
-                 </button>
-                 <button 
-                   onClick={onExit}
-                   className="w-full bg-gray-100 text-gray-600 py-4 rounded-2xl font-black text-xl hover:bg-gray-200 transition-colors"
-                 >
-                   MAIN MENU
-                 </button>
-               </div>
+              <div className="absolute -top-10 -left-10 w-40 h-40 bg-brand-accent rounded-full opacity-20 blur-3xl" />
+              <Trophy className="w-24 h-24 text-brand-accent mx-auto mb-6 animate-bounce" />
+              <h2 className="text-5xl font-display font-black text-indigo-950 mb-2">VICTORY!</h2>
+              <p className="text-gray-500 font-bold mb-8 italic">You finished in {moves} moves!</p>
+
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={initGame}
+                  className="w-full bg-brand-primary text-white py-4 rounded-2xl font-black text-xl shadow-xl hover:scale-105 transition-transform"
+                >
+                  PLAY AGAIN
+                </button>
+                <button
+                  onClick={onExit}
+                  className="w-full bg-gray-100 text-gray-600 py-4 rounded-2xl font-black text-xl hover:bg-gray-200 transition-colors"
+                >
+                  MAIN MENU
+                </button>
+              </div>
             </div>
           </motion.div>
         )}
