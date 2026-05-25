@@ -5,6 +5,8 @@ import MemoryGame from './components/MemoryGame';
 import DetectGame from './components/DetectGame';
 import RevealGame from './components/RevealGame';
 import TrickyGame from './components/TrickyGame';
+import RussianDollGame from './components/RussianDollGame';
+import TetrisGame from './components/TetrisGame';
 import { THEMES, GameTheme, GridSize } from './constants';
 
 const GAMES = [
@@ -52,11 +54,29 @@ const GAMES = [
     borderColor: 'border-rose-700',
     accentColor: 'text-rose-200',
     icon: <Ghost className="w-10 h-10" />,
+  },
+  {
+    id: 'v6',
+    title: 'Russian Doll',
+    subtitle: 'nesting shapes',
+    color: 'bg-emerald-500',
+    borderColor: 'border-emerald-700',
+    accentColor: 'text-emerald-200',
+    icon: <Grid2X2 className="w-10 h-10" />,
+  },
+  {
+    id: 'v7',
+    title: 'Russian Tetris',
+    subtitle: 'classic blocks',
+    color: 'bg-indigo-500',
+    borderColor: 'border-indigo-700',
+    accentColor: 'text-indigo-200',
+    icon: <LayoutGrid className="w-10 h-10" />,
   }
 ];
 
 export default function App() {
-  const [activeGame, setActiveGame] = useState<'v1' | 'v2' | 'v3' | 'v4' | 'v5' | null>(null);
+  const [activeGame, setActiveGame] = useState<'v1' | 'v2' | 'v3' | 'v4' | 'v5' | 'v6' | 'v7' | null>(null);
   const [selectedTheme, setSelectedTheme] = useState<GameTheme>('alphabet');
 
   const currentGame = GAMES.find(g => g.id === activeGame);
@@ -192,6 +212,19 @@ export default function App() {
                 />
               ) : activeGame === 'v5' ? (
                 <TrickyGame 
+                  title={currentGame?.title || ''}
+                  subtitle={currentGame?.subtitle || ''}
+                  onExit={() => setActiveGame(null)} 
+                />
+              ) : activeGame === 'v6' ? (
+                <RussianDollGame 
+                  theme={selectedTheme} 
+                  title={currentGame?.title || ''}
+                  subtitle={currentGame?.subtitle || ''}
+                  onExit={() => setActiveGame(null)} 
+                />
+              ) : activeGame === 'v7' ? (
+                <TetrisGame 
                   title={currentGame?.title || ''}
                   subtitle={currentGame?.subtitle || ''}
                   onExit={() => setActiveGame(null)} 
