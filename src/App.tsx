@@ -48,7 +48,16 @@ const GAMES = [
   },
   {
     id: 'v5',
-    title: 'Tricky Reveal',
+    title: 'Tricky Sea',
+    subtitle: "shadow vs reality",
+    color: 'bg-rose-500',
+    borderColor: 'border-rose-700',
+    accentColor: 'text-rose-200',
+    icon: <Ghost className="w-10 h-10" />,
+  },
+  {
+    id: 'v8',
+    title: 'Tricky Toys',
     subtitle: "shadow vs reality",
     color: 'bg-rose-500',
     borderColor: 'border-rose-700',
@@ -76,7 +85,7 @@ const GAMES = [
 ];
 
 export default function App() {
-  const [activeGame, setActiveGame] = useState<'v1' | 'v2' | 'v3' | 'v4' | 'v5' | 'v6' | 'v7' | null>(null);
+  const [activeGame, setActiveGame] = useState<'v1' | 'v2' | 'v3' | 'v4' | 'v5' | 'v6' | 'v7' | 'v8' | null>(null);
   const [selectedTheme, setSelectedTheme] = useState<GameTheme>('alphabet');
 
   const currentGame = GAMES.find(g => g.id === activeGame);
@@ -137,7 +146,7 @@ export default function App() {
                 {/* Theme Selector */}
                 <div className="flex flex-wrap justify-center gap-3 mb-8">
                   {Object.values(THEMES)
-                    .filter(t => t.id !== 'tricky' && t.id !== 'food')
+                    .filter(t => t.id !== 'tricky-sea' && t.id !== 'tricky-toy' && t.id !== 'food')
                     .map((t) => (
                     <button
                       key={t.id}
@@ -211,10 +220,18 @@ export default function App() {
                   onExit={() => setActiveGame(null)} 
                 />
               ) : activeGame === 'v5' ? (
-                <TrickyGame 
+                <TrickyGame
+                  theme="tricky-sea"
                   title={currentGame?.title || ''}
                   subtitle={currentGame?.subtitle || ''}
-                  onExit={() => setActiveGame(null)} 
+                  onExit={() => setActiveGame(null)}
+                />
+              ) : activeGame === 'v8' ? (
+                <TrickyGame
+                  theme="tricky-toy"
+                  title={currentGame?.title || ''}
+                  subtitle={currentGame?.subtitle || ''}
+                  onExit={() => setActiveGame(null)}
                 />
               ) : activeGame === 'v6' ? (
                 <RussianDollGame 

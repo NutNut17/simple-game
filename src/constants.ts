@@ -1,4 +1,4 @@
-export type GameTheme = 'alphabet' | 'sea' | 'food' | 'tricky';
+export type GameTheme = 'alphabet' | 'sea' | 'food' | 'toy' | 'tricky-sea' | 'tricky-toy';
 export type GridSize = 2 | 3 | 4 | 5 | 6;
 
 export interface ThemeConfig {
@@ -54,9 +54,22 @@ export const THEMES: Record<GameTheme, ThemeConfig> = {
     },
     images: ['pizza', 'burger', 'apple', 'donut', 'cookie', 'taco', 'egg', 'banana']
   },
-  tricky: {
-    id: 'tricky',
-    label: '🎭 Tricky Shapes',
+  toy: {
+    id: 'toy',
+    label: '🪀 Toy Box',
+    extension: 'jpg',
+    colors: {
+      primary: 'bg-amber-600',
+      secondary: 'bg-amber-400',
+      accent: 'text-amber-200',
+      bg: 'bg-amber-950',
+      border: 'border-amber-700'
+    },
+    images: ['chinese-yoyo', 'kite', 'top', 'yoyo']
+  },
+  'tricky-sea': {
+    id: 'tricky-sea',
+    label: '🎭 Tricky Sea',
     extension: 'png',
     colors: {
       primary: 'bg-rose-600',
@@ -66,5 +79,18 @@ export const THEMES: Record<GameTheme, ThemeConfig> = {
       border: 'border-rose-700'
     },
     images: ['coral-starfish', 'jellyfish-octopus', 'turtle-whale']
+  },
+  'tricky-toy': {
+    id: 'tricky-toy',
+    label: '🎭 Tricky Toys',
+    extension: 'png',
+    colors: {
+      primary: 'bg-rose-600',
+      secondary: 'bg-rose-400',
+      accent: 'text-rose-200',
+      bg: 'bg-rose-950',
+      border: 'border-rose-700'
+    },
+    images: ['kite-yoyo', 'top-yoyo']
   }
 };

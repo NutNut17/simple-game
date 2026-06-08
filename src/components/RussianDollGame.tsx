@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Trophy, RotateCcw, HelpCircle, Volume2, VolumeX, Sparkles, Star, Milestone } from 'lucide-react';
+import { ArrowLeft, Trophy, RotateCcw, HelpCircle, Volume2, VolumeX, Sparkles, Milestone } from 'lucide-react';
 import { THEMES, GameTheme } from '../constants';
 
 interface RussianDollGameProps {
@@ -12,10 +12,12 @@ interface RussianDollGameProps {
 
 interface Doll {
   id: string;
-  level: number;
   value: string;
   isOpen: boolean;
+  isReal: boolean;
 }
+
+type ScrambleMode = 'classic' | 'tricky';
 
 const LEVEL_STYLES = [
   {
@@ -62,56 +64,80 @@ const LEVEL_STYLES = [
   }
 ];
 
-// Fallback emojis in case theme images are missing or empty (such as food theme)
-export function getEmojiFallback(value: string, theme: GameTheme): string {
-  if (theme === 'alphabet') return value;
+// Dedicated toy artwork that powers the letter-scramble puzzles in this game
+const TOY_ITEMS = ['kite', 'top', 'yoyo', 'chinese-yoyo'];
+const getToyImageSrc = (value: string) => `${import.meta.env.BASE_URL}themes/toy/${value}.jpg`;
 
+// Fallback emoji in case a toy image fails to load
+function getEmojiFallback(value: string): string {
   const map: Record<string, string> = {
-    // Deep Sea
-    'clam-svgrepo-com': '🦪',
-    'coral-svgrepo-com': '🪸',
-    'jellyfish-svgrepo-com': '🪼',
-    'octopus-svgrepo-com': '🐙',
-    'starfish-svgrepo-com': '⭐',
-    'turtle-svgrepo-com': '🐢',
-    'whale-svgrepo-com': '🐋',
-    // Yummy Food
-    'pizza': '🍕',
-    'burger': '🍔',
-    'apple': '🍎',
-    'donut': '🍩',
-    'cookie': '🍪',
-    'taco': '🌮',
-    'egg': '🍳',
-    'banana': '🍌',
-    // Tricky Shapes
-    'coral-starfish': '🪸',
-    'jellyfish-octopus': '🐙',
-    'turtle-whale': '🐋',
+    kite: '🪁',
+    top: '🌀',
+    yoyo: '🪀',
+    'chinese-yoyo': '🪀'
   };
-
-  return map[value] || '🎁';
+  return map[value] || '🧸';
 }
 
-// Format the name of a theme item beautifully
+// Format the name of a toy beautifully (e.g. "chinese-yoyo" -> "Chinese Yoyo")
 const getNiceName = (value: string): string => {
   if (!value) return '';
   const clean = value.replace('-svgrepo-com', '').replace('-', ' ');
   return clean.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 };
 
+// The word a puzzle is built from -- letters only, lower-cased (e.g. "Chinese Yoyo" -> "chineseyoyo")
+const getScrambleWord = (value: string): string =>
+  getNiceName(value).replace(/[^a-zA-Z]/g, '').toLowerCase();
+
+// Shuffle a word's letters, retrying so the result isn't identical to the original spelling
+function shuffleLetters(word: string): string[] {
+  const letters = word.split('');
+  if (letters.length <= 1) return letters;
+
+  let shuffled = letters;
+  let attempts = 0;
+  do {
+    shuffled = [...letters];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    attempts++;
+  } while (shuffled.join('') === word && attempts < 8);
+
+  return shuffled;
+}
+
+// Build the letter sequence revealed one doll at a time: the word's letters in
+// shuffled order, with a few unrelated "trickster" letters mixed in for tricky mode
+function buildLetterSequence(word: string, mode: ScrambleMode): { char: string; isReal: boolean }[] {
+  const sequence = shuffleLetters(word).map(char => ({ char, isReal: true }));
+
+  if (mode === 'tricky') {
+    const usedLetters = new Set(word.split(''));
+    const noisePool = 'abcdefghijklmnopqrstuvwxyz'.split('').filter(c => !usedLetters.has(c));
+    const noiseCount = Math.max(1, 12 - word.length);
+
+    for (let n = 0; n < noiseCount; n++) {
+      const noiseChar = noisePool[Math.floor(Math.random() * noisePool.length)];
+      const pos = Math.floor(Math.random() * (sequence.length + 1));
+      sequence.splice(pos, 0, { char: noiseChar, isReal: false });
+    }
+  }
+
+  return sequence;
+}
+
 export default function RussianDollGame({ theme, title, subtitle, onExit }: RussianDollGameProps) {
   const [activeIdx, setActiveIdx] = useState(0);
   const [dolls, setDolls] = useState<Doll[]>([]);
-  const [targetValue, setTargetValue] = useState('');
-  const [targetDepth, setTargetDepth] = useState(-1);
-  const [streak, setStreak] = useState(0);
-  const [bestStreak, setBestStreak] = useState(0);
-  const [gameMode, setGameMode] = useState<'quest' | 'free'>('quest');
+  const [gameMode, setGameMode] = useState<ScrambleMode>('classic');
+  const [toyIdx, setToyIdx] = useState(0);
+  const [roundToy, setRoundToy] = useState(TOY_ITEMS[0]);
+  const [roundWord, setRoundWord] = useState('');
+  const [isRevealed, setIsRevealed] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [isWon, setIsWon] = useState(false);
-  const [isNewHighScore, setIsNewHighScore] = useState(false);
-  const [openedStates, setOpenedStates] = useState<boolean[]>(Array(6).fill(false));
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
   const themeConfig = THEMES[theme] || THEMES.alphabet;
@@ -194,112 +220,84 @@ export default function RussianDollGame({ theme, title, subtitle, onExit }: Russ
     }
   };
 
-  // Generate a nest of 6 custom dolls based on current game theme
-  const generateDollStack = (mode: 'quest' | 'free' = gameMode) => {
-    const images = [...themeConfig.images];
-    if (!images || images.length === 0) return;
+  // Pick a toy, scramble its name into a letter sequence, and stack a fresh nest of dolls for it
+  const generateRound = (mode: ScrambleMode = gameMode, idx: number = toyIdx) => {
+    const safeIdx = ((idx % TOY_ITEMS.length) + TOY_ITEMS.length) % TOY_ITEMS.length;
+    const toy = TOY_ITEMS[safeIdx];
+    const word = getScrambleWord(toy);
+    const sequence = buildLetterSequence(word, mode);
 
-    // Pick a target from available theme items
-    const randomTarget = images[Math.floor(Math.random() * images.length)];
-    setTargetValue(randomTarget);
+    const newDolls: Doll[] = sequence.map((item, i) => ({
+      id: `doll-${i}-${Math.random()}`,
+      value: item.char.toUpperCase(),
+      isOpen: false,
+      isReal: item.isReal
+    }));
 
-    // Pick a random depth to hide the target (index 1 to 5, so depth 0 has a random cover)
-    // For free mode, there's no target depth.
-    const depth = mode === 'quest' ? Math.floor(Math.random() * 5) + 1 : -1;
-    setTargetDepth(depth);
-
-    const newDolls: Doll[] = Array.from({ length: 6 }).map((_, idx) => {
-      let val = '';
-      if (mode === 'quest' && idx === depth) {
-        val = randomTarget;
-      } else {
-        // Find other random images (avoid target image at non-target levels to ensure clear climax)
-        let pool = images.filter(img => img !== randomTarget);
-        if (pool.length === 0) pool = images;
-        val = pool[Math.floor(Math.random() * pool.length)];
-      }
-
-      return {
-        id: `doll-${idx}-${Math.random()}`,
-        level: idx,
-        value: val,
-        isOpen: false
-      };
-    });
-
+    setRoundToy(toy);
+    setRoundWord(word);
     setDolls(newDolls);
     setActiveIdx(0);
-    setOpenedStates(Array(6).fill(false));
-    setIsWon(false);
-    setIsNewHighScore(false);
+    setIsRevealed(false);
   };
 
   useEffect(() => {
     setFailedImages({});
-    generateDollStack();
-  }, [theme]);
+    setToyIdx(0);
+    generateRound('classic', 0);
+  }, []);
 
   const handleOpenDoll = (index: number) => {
-    if (isWon || index !== activeIdx || index >= dolls.length) return;
+    if (isRevealed || index !== activeIdx || index >= dolls.length || dolls[index].isOpen) return;
 
-    const currentDoll = dolls[index];
+    // The smallest baby doll has nothing nested inside -- its letter is already showing,
+    // so there's nothing left to split open. Leave it be once it's the one in focus.
+    if (index === dolls.length - 1) return;
 
-    // Check if the currently active doll actually MATCHES the quest target
-    if (gameMode === 'quest' && currentDoll.value === targetValue) {
-      // VICTORY! Confirmed match
-      setIsWon(true);
-      playSound('success');
-      const nextStreak = streak + 1;
-      setStreak(nextStreak);
-      if (nextStreak > bestStreak) {
-        setBestStreak(nextStreak);
-        setIsNewHighScore(true);
-      }
-      return;
-    }
-
-    // Otherwise, play the "open" (split) animation and scale up next doll
     playSound('pop');
-    
-    // Update opened states
-    setOpenedStates(prev => {
-      const copy = [...prev];
-      copy[index] = true;
-      return copy;
-    });
+    setDolls(prev => prev.map((d, i) => i === index ? { ...d, isOpen: true } : d));
 
-    setDolls(prev => {
-      return prev.map((d, i) => i === index ? { ...d, isOpen: true } : d);
-    });
-
-    // Check if we just opened the very last doll (index 5, which is the smallest baby doll)
-    if (index === dolls.length - 1) {
-      // No more dolls. If they click the smallest doll and haven't won, they failed this hunt
-      setTimeout(() => {
-        playSound('fail');
-        setStreak(0);
-        // Prompt a clean reset or fail state
-      }, 500);
-      return;
-    }
-
-    // Delay the transition of focal activeIdx slightly so split animation fires first
+    // Slide focus to the next doll so its letter comes into view
     setTimeout(() => {
       setActiveIdx(prev => prev + 1);
       playSound('slide');
     }, 380);
   };
 
-  const handleThemeSwitchInGame = (newTheme: GameTheme) => {
+  const handleModeChange = (mode: ScrambleMode) => {
+    if (mode === gameMode) return;
     playSound('click');
-    // Let's rely on standard theme propagation but we can override if needed
+    setGameMode(mode);
+    generateRound(mode, toyIdx);
   };
+
+  const handleReveal = () => {
+    if (isRevealed) return;
+    playSound('success');
+    setIsRevealed(true);
+  };
+
+  const handleReshuffle = () => {
+    playSound('click');
+    generateRound(gameMode, toyIdx);
+  };
+
+  const handleNextToy = () => {
+    playSound('click');
+    const nextIdx = (toyIdx + 1) % TOY_ITEMS.length;
+    setToyIdx(nextIdx);
+    generateRound(gameMode, nextIdx);
+  };
+
+  // Each doll's letter shows the moment it comes into focus, so "letters shown" tracks activeIdx
+  const lettersShown = dolls.length > 0 ? Math.min(activeIdx + 1, dolls.length) : 0;
+  const allRevealed = dolls.length > 0 && lettersShown === dolls.length;
 
   return (
     <div className={`flex-1 flex flex-col ${themeConfig.colors.bg} overflow-hidden relative w-full h-full`}>
-      {/* Combined Top Bar */}
-      <div className={`${themeConfig.colors.primary} p-4 flex items-center justify-between border-b-4 border-black/20 relative z-30 transition-colors duration-500 shadow-xl`}>
-        {/* Left Side: Exit + Game mode stats */}
+      {/* Top Bar */}
+      <div className={`${themeConfig.colors.primary} p-4 flex flex-wrap items-center justify-between gap-3 border-b-4 border-black/20 relative z-30 transition-colors duration-500 shadow-xl`}>
+        {/* Left Side: Exit + title + mode selector */}
         <div className="flex items-center gap-4">
           <button
             onClick={onExit}
@@ -308,7 +306,7 @@ export default function RussianDollGame({ theme, title, subtitle, onExit }: Russ
             <ArrowLeft size={18} strokeWidth={3} />
             <span className="hidden sm:inline">EXIT</span>
           </button>
-          
+
           <div className="hidden md:block text-white">
             <h3 className="font-display font-black text-white text-lg leading-none">{title}</h3>
             <p className="text-[10px] uppercase font-black opacity-60 mt-1">{subtitle}</p>
@@ -319,126 +317,81 @@ export default function RussianDollGame({ theme, title, subtitle, onExit }: Russ
           {/* Mode Selector */}
           <div className="flex bg-black/20 p-1 rounded-xl items-center gap-1 h-10 border border-white/5">
             <button
-              onClick={() => {
-                setGameMode('quest');
-                generateDollStack('quest');
-                playSound('click');
-              }}
+              onClick={() => handleModeChange('classic')}
               className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${
-                gameMode === 'quest' ? 'bg-white text-brand-dark shadow-md' : 'text-white/40 hover:text-white'
+                gameMode === 'classic' ? 'bg-white text-brand-dark shadow-md' : 'text-white/40 hover:text-white'
               }`}
             >
-              QUEST HUNT
+              SCRAMBLE
             </button>
             <button
-              onClick={() => {
-                setGameMode('free');
-                generateDollStack('free');
-                playSound('click');
-              }}
+              onClick={() => handleModeChange('tricky')}
               className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${
-                gameMode === 'free' ? 'bg-white text-brand-dark shadow-md' : 'text-white/40 hover:text-white'
+                gameMode === 'tricky' ? 'bg-white text-brand-dark shadow-md' : 'text-white/40 hover:text-white'
               }`}
             >
-              FREE PLAY
+              TRICKY MIX
             </button>
           </div>
         </div>
 
-        {/* Right Side: Sound settings & stats */}
-        <div className="flex items-center gap-3">
-          {gameMode === 'quest' && (
-            <div className="hidden md:flex items-center gap-4 text-white mr-2 bg-black/20 px-4 py-1.5 rounded-xl border border-white/5">
-              <div className="text-center">
-                <p className="text-[9px] uppercase font-bold opacity-50 leading-none">Streak</p>
-                <p className="text-md font-black text-brand-accent leading-none mt-1">{streak} 🔥</p>
-              </div>
-              <div className="h-6 w-px bg-white/10" />
-              <div className="text-center">
-                <p className="text-[9px] uppercase font-bold opacity-50 leading-none">Best</p>
-                <p className="text-md font-black text-white leading-none mt-1">{bestStreak} 🏆</p>
-              </div>
-            </div>
-          )}
+        {/* Right Side: Sound toggle */}
+        <button
+          onClick={() => setSoundEnabled(!soundEnabled)}
+          className="p-2.5 bg-black/20 hover:bg-black/30 border border-white/10 rounded-xl text-white transition-all active:scale-95"
+          title={soundEnabled ? 'Mute Sounds' : 'Unmute Sounds'}
+        >
+          {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+        </button>
+      </div>
 
+      {/* Puzzle Status & Controls Strip -- replaces the old streak/banner clutter with one efficient row */}
+      <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3 bg-black/15 border-b-2 border-black/10 relative z-20">
+        <div className="flex items-center gap-3 text-white min-w-0">
+          <div className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center flex-shrink-0">
+            <Milestone size={18} className="text-brand-accent" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] uppercase font-black text-brand-accent tracking-widest block leading-none">
+              Unscramble The Toy
+            </span>
+            <span className="text-white text-sm font-black truncate block mt-1">
+              {dolls.length === 0
+                ? 'Stacking the nest…'
+                : allRevealed
+                  ? 'All letters shown — make your guess, then hit Reveal!'
+                  : `${lettersShown} / ${dolls.length} letters shown${gameMode === 'tricky' ? ' · watch for tricksters!' : ''}`}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
           <button
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className="p-2.5 bg-black/20 hover:bg-black/30 border border-white/10 rounded-xl text-white transition-all active:scale-95"
-            title={soundEnabled ? 'Mute Sounds' : 'Unmute Sounds'}
+            onClick={handleReveal}
+            className="flex items-center gap-1.5 bg-brand-accent hover:brightness-110 text-brand-dark px-4 py-2.5 rounded-xl font-black shadow-lg transition-all active:scale-95 text-xs uppercase"
           >
-            {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            <HelpCircle size={14} strokeWidth={3} /> Reveal
           </button>
-
           <button
-            onClick={() => {
-              playSound('click');
-              generateDollStack();
-            }}
-            className="bg-brand-accent hover:brightness-110 text-brand-dark px-5 py-2.5 rounded-xl font-black shadow-lg transition-all active:scale-95 text-xs flex items-center gap-2 uppercase"
+            onClick={handleReshuffle}
+            className="flex items-center gap-1.5 bg-black/20 hover:bg-black/30 border border-white/10 text-white px-4 py-2.5 rounded-xl font-black transition-all active:scale-95 text-xs uppercase"
           >
-            <RotateCcw size={14} strokeWidth={3} />
-            Reset Nest
+            <RotateCcw size={14} strokeWidth={3} /> Reshuffle
+          </button>
+          <button
+            onClick={handleNextToy}
+            className="flex items-center gap-1.5 bg-black/20 hover:bg-black/30 border border-white/10 text-white px-4 py-2.5 rounded-xl font-black transition-all active:scale-95 text-xs uppercase"
+          >
+            <Sparkles size={14} strokeWidth={3} /> Next Toy
           </button>
         </div>
       </div>
 
       {/* Main Board Area */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4 relative select-none">
-        {/* Quest Info Banner */}
-        {gameMode === 'quest' && targetValue && !isWon && (
-          <motion.div
-            initial={{ y: -50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            className="absolute top-6 left-1/2 -translate-x-1/2 bg-white/10 border-2 border-white/10 backdrop-blur-xl px-6 py-3 rounded-3xl flex items-center gap-4 shadow-[0_15px_30px_rgba(0,0,0,0.3)] max-w-sm w-full"
-            id="quest-banner"
-          >
-            <div className="w-14 h-14 bg-white/95 rounded-2xl flex items-center justify-center shadow-md border-2 border-brand-accent flex-shrink-0">
-              {theme === 'alphabet' ? (
-                <span className="text-2xl font-black text-[#1e1b4b]">{targetValue}</span>
-              ) : (
-                <div className="flex items-center justify-center p-1 w-full h-full relative">
-                  {!failedImages[targetValue] ? (
-                    <img
-                      src={theme === 'tricky' ? `${import.meta.env.BASE_URL}tricky-image/${targetValue}.png` : `${import.meta.env.BASE_URL}themes/${theme}/${targetValue}.${themeConfig.extension || 'png'}`}
-                      alt={targetValue}
-                      className="w-10 h-10 object-contain select-none"
-                      onError={() => setFailedImages(prev => ({ ...prev, [targetValue]: true }))}
-                    />
-                  ) : (
-                    <span className="text-3xl filter drop-shadow">{getEmojiFallback(targetValue, theme)}</span>
-                  )}
-                </div>
-              )}
-            </div>
-            
-            <div className="flex-1 min-w-0">
-              <span className="text-[10px] uppercase font-black text-brand-accent tracking-widest block leading-none">CURRENT REQUEST</span>
-              <span className="text-white text-lg font-black truncate block mt-1">
-                Find {theme === 'alphabet' ? `Letter "${targetValue}"` : getNiceName(targetValue)}
-              </span>
-              <span className="text-white/60 text-[10px] block font-semibold mt-0.5">
-                Peek dolls to find a match!
-              </span>
-            </div>
-          </motion.div>
-        )}
+      <div className="flex-1 flex items-center justify-center p-4 relative select-none">
+        <div className="relative w-full max-w-2xl h-full max-h-[560px] flex items-center justify-center border-[12px] border-white/20 rounded-[48px] shadow-[0_0_50px_rgba(255,255,255,0.02)] backdrop-blur-[1px] overflow-hidden bg-black/10">
 
-        {/* Free Play Info Banner */}
-        {gameMode === 'free' && (
-          <motion.div
-            initial={{ y: -30, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            className="absolute top-6 bg-white/5 border border-white/5 backdrop-blur-md px-6 py-2.5 rounded-full text-white/80 font-black text-xs uppercase tracking-widest flex items-center gap-3"
-          >
-            <Sparkles size={14} className="text-brand-accent animate-spin" style={{ animationDuration: '3s' }} />
-            <span>Nesting dolls opened: {activeIdx} / 6</span>
-          </motion.div>
-        )}
-
-        {/* Play Stage */}
-        <div className="relative w-full max-w-2xl h-[460px] flex items-center justify-center border-[12px] border-white/20 rounded-[48px] shadow-[0_0_50px_rgba(255,255,255,0.02)] backdrop-blur-[1px] overflow-hidden bg-black/10 mt-14">
-          
-          {/* Animated dolls stack representation */}
+          {/* Animated dolls stack representation -- each belly reveals one scrambled letter */}
           <div className="relative flex items-center justify-center w-full h-full">
             {dolls
               .map((doll, index) => ({ doll, index }))
@@ -451,56 +404,20 @@ export default function RussianDollGame({ theme, title, subtitle, onExit }: Russ
                 const diffB = b.index - activeIdx;
                 return diffB - diffA; // Order: 2, 1, 0, -1 so inner smaller dolls are rendered first (on bottom)
               })
-              .map(({ doll, index }) => {
-                const diff = index - activeIdx;
-                const isMatch = gameMode === 'quest' && doll.value === targetValue;
-
-                return (
-                  <DollWrapper
-                    key={doll.id}
-                    doll={doll}
-                    diff={diff}
-                    index={index}
-                    isMatch={isMatch}
-                    theme={theme}
-                    extension={themeConfig.extension || 'png'}
-                    failedImages={failedImages}
-                    onFailedImage={(val) => setFailedImages(prev => ({ ...prev, [val]: true }))}
-                    onOpen={() => handleOpenDoll(index)}
-                  />
-                );
-              })}
+              .map(({ doll, index }) => (
+                <DollWrapper
+                  key={doll.id}
+                  doll={doll}
+                  diff={index - activeIdx}
+                  index={index}
+                  onOpen={() => handleOpenDoll(index)}
+                />
+              ))}
           </div>
 
-          {/* If they reached the final miniature baby doll and opened it... */}
-          {activeIdx === 5 && openedStates[5] && !isWon && (
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-md z-40 p-6"
-            >
-              <div className="bg-slate-900 border-4 border-rose-500/30 p-8 rounded-[40px] max-w-sm text-center shadow-2xl">
-                <span className="text-5xl block mb-4">🧸</span>
-                <h3 className="text-white font-display font-black text-3xl uppercase tracking-wider">Baby Doll Reached!</h3>
-                <p className="text-white/60 text-sm mt-3 leading-relaxed">
-                  You opened the entire chain but the quest item was not of this size. Let's stack another box!
-                </p>
-                <button
-                  onClick={() => {
-                    playSound('click');
-                    generateDollStack();
-                  }}
-                  className="mt-6 bg-brand-accent hover:brightness-110 active:scale-95 text-brand-dark px-8 py-3 rounded-2xl text-sm font-black uppercase tracking-wider transition-all"
-                >
-                  Regenerate Dolls
-                </button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Success / Won Overlay */}
+          {/* Reveal Overlay -- shows the answer once the player asks for it */}
           <AnimatePresence>
-            {isWon && (
+            {isRevealed && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -512,57 +429,60 @@ export default function RussianDollGame({ theme, title, subtitle, onExit }: Russ
                   animate={{ scale: 1, y: 0 }}
                   exit={{ scale: 0.7, y: 50 }}
                   transition={{ type: 'spring', damping: 15 }}
-                  className="bg-indigo-950 border-4 border-brand-accent/50 p-10 rounded-[48px] max-w-sm w-full text-center shadow-3xl relative overflow-hidden"
+                  className="bg-indigo-950 border-4 border-brand-accent/50 p-6 rounded-[36px] max-w-sm w-full text-center shadow-3xl relative overflow-hidden"
                 >
                   <div className="absolute top-0 left-0 w-full h-1/2 bg-white/5 skew-y-12 -mt-16 pointer-events-none" />
-                  
-                  <div className="w-20 h-20 bg-brand-accent/20 rounded-3xl mx-auto flex items-center justify-center mb-6">
-                    <Trophy className="text-brand-accent w-12 h-12 animate-bounce" />
+
+                  <div className="w-20 h-20 mx-auto bg-white rounded-3xl flex items-center justify-center mb-3 shadow-md border-2 border-brand-accent overflow-hidden relative">
+                    {!failedImages[roundToy] ? (
+                      <img
+                        src={getToyImageSrc(roundToy)}
+                        alt={roundToy}
+                        className="w-full h-full object-contain p-1.5 select-none"
+                        onError={() => setFailedImages(prev => ({ ...prev, [roundToy]: true }))}
+                      />
+                    ) : (
+                      <span className="text-4xl">{getEmojiFallback(roundToy)}</span>
+                    )}
                   </div>
 
-                  {isNewHighScore && (
-                    <span className="bg-brand-accent text-brand-dark px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest inline-block mb-3 animate-pulse">
-                      New Streak Record!
-                    </span>
+                  <span className="bg-brand-accent text-brand-dark px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-1.5 mb-2">
+                    <Trophy size={12} strokeWidth={3} /> It Was...
+                  </span>
+
+                  <h2 className="text-white text-2xl font-display font-black uppercase tracking-widest leading-tight">
+                    {getNiceName(roundToy)}
+                  </h2>
+
+                  <div className="flex flex-wrap justify-center gap-1.5 my-3">
+                    {roundWord.split('').map((ch, i) => (
+                      <span
+                        key={i}
+                        className="w-8 h-8 flex items-center justify-center bg-white/10 border border-white/10 text-white rounded-lg font-black uppercase text-sm"
+                      >
+                        {ch}
+                      </span>
+                    ))}
+                  </div>
+
+                  {gameMode === 'tricky' && dolls.some(d => !d.isReal) && (
+                    <p className="text-white/40 text-[11px] font-semibold uppercase tracking-wide mb-3 px-2">
+                      Tricky letters mixed in: {dolls.filter(d => !d.isReal).map(d => d.value).join(' · ')}
+                    </p>
                   )}
 
-                  <h2 className="text-white text-3xl md:text-4xl font-display font-black uppercase tracking-widest leading-tight">
-                    QUEST SOLVED!
-                  </h2>
-                  <p className="text-indigo-200 font-bold uppercase tracking-widest text-xs mt-2">
-                    Found {theme === 'alphabet' ? `Letter ${targetValue}` : getNiceName(targetValue)}
-                  </p>
-
-                  <div className="my-6 bg-black/25 px-6 py-4 rounded-3xl text-left border border-white/5 space-y-2">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-white/40 font-bold uppercase tracking-wider">Nesting Depth</span>
-                      <span className="text-white font-black">{activeIdx + 1} dolls opened</span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-white/40 font-bold uppercase tracking-wider">Current Streak</span>
-                      <span className="text-brand-accent font-black text-sm">{streak} wins</span>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-2">
                     <button
-                      onClick={() => {
-                        playSound('click');
-                        generateDollStack();
-                      }}
-                      className="bg-brand-accent hover:brightness-110 active:scale-95 text-brand-dark py-4 px-8 rounded-2xl font-black text-sm uppercase tracking-widest transition-all w-full shadow-lg"
+                      onClick={handleNextToy}
+                      className="bg-brand-accent hover:brightness-110 active:scale-95 text-brand-dark py-3 px-8 rounded-2xl font-black text-sm uppercase tracking-widest transition-all w-full shadow-lg"
                     >
-                      Next Quest 🌟
+                      Next Toy 🧸
                     </button>
                     <button
-                      onClick={() => {
-                        playSound('click');
-                        setStreak(0);
-                        generateDollStack();
-                      }}
-                      className="text-white/40 hover:text-white hover:bg-white/5 py-2.5 rounded-xl font-bold text-xs transition-all w-full"
+                      onClick={handleReshuffle}
+                      className="text-white/40 hover:text-white hover:bg-white/5 py-2 rounded-xl font-bold text-xs transition-all w-full"
                     >
-                      Reset Streak
+                      Reshuffle This Toy
                     </button>
                   </div>
                 </motion.div>
@@ -584,25 +504,10 @@ interface DollWrapperProps {
   doll: Doll;
   diff: number;
   index: number;
-  isMatch: boolean;
-  theme: GameTheme;
-  extension: string;
-  failedImages: Record<string, boolean>;
-  onFailedImage: (val: string) => void;
   onOpen: () => void;
 }
 
-function DollWrapper({
-  doll,
-  diff,
-  index,
-  isMatch,
-  theme,
-  extension,
-  failedImages,
-  onFailedImage,
-  onOpen
-}: DollWrapperProps) {
+function DollWrapper({ doll, diff, index, onOpen }: DollWrapperProps) {
   const style = LEVEL_STYLES[index % LEVEL_STYLES.length];
 
   // Map values relative to current focus Doll (diff === index - activeIdx)
@@ -640,7 +545,7 @@ function DollWrapper({
     pointerEvents = 'none';
   }
 
-  // The click target. If it is a match, click triggers Claim victory block. If not, it opens the doll.
+  // The click target -- always opens the doll to reveal its letter
   const handleBodyClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onOpen();
@@ -679,7 +584,7 @@ function DollWrapper({
         transition={{ duration: 0.52, ease: [0.34, 1.56, 0.64, 1] }}
         onClick={handleBodyClick}
       >
-        <DollBody style={style} theme={theme} value={doll.value} extension={extension} isMatch={isMatch} failedImages={failedImages} onFailedImage={onFailedImage} />
+        <DollBody style={style} value={doll.value} />
       </motion.div>
 
       {/* Bottom Half of Doll (Base) */}
@@ -694,34 +599,19 @@ function DollWrapper({
         transition={{ duration: 0.52, ease: [0.34, 1.56, 0.64, 1] }}
         onClick={handleBodyClick}
       >
-        <DollBody style={style} theme={theme} value={doll.value} extension={extension} isMatch={isMatch} failedImages={failedImages} onFailedImage={onFailedImage} />
+        <DollBody style={style} value={doll.value} />
       </motion.div>
     </motion.div>
   );
 }
 
-// Single drawing of the Matryoshka doll body paths
+// Single drawing of the Matryoshka doll body, with its scrambled-letter belly
 interface DollBodyProps {
   style: typeof LEVEL_STYLES[0];
-  theme: GameTheme;
   value: string;
-  extension: string;
-  isMatch: boolean;
-  failedImages: Record<string, boolean>;
-  onFailedImage: (val: string) => void;
 }
 
-function DollBody({
-  style,
-  theme,
-  value,
-  extension,
-  isMatch,
-  failedImages,
-  onFailedImage
-}: DollBodyProps) {
-  const imagePath = theme === 'tricky' ? `${import.meta.env.BASE_URL}tricky-image/${value}.png` : `${import.meta.env.BASE_URL}themes/${theme}/${value}.${extension}`;
-
+function DollBody({ style, value }: DollBodyProps) {
   return (
     <div className="relative w-full h-full select-none">
       {/* Custom Vector SVG Design of Doll */}
@@ -808,14 +698,9 @@ function DollBody({
         {/* 10. White Apron/Belly Backing Oval */}
         <ellipse cx="100" cy="210" rx="46" ry="48" fill="#ffffff" stroke="#222" strokeWidth="3" />
         <ellipse cx="100" cy="210" rx="42" ry="44" fill="none" stroke={style.bellyBorder} strokeWidth="3" strokeDasharray="3 3.5" />
-
-        {/* Gold crown over belly apron */}
-        {isMatch && (
-           <path d="M 85 158 opacity-90" /> // empty path helper
-        )}
       </svg>
 
-      {/* 11. Responsive Overlaid Belly Text (Alphabet) or Image (Sea/Food/Tricky) */}
+      {/* 11. Responsive Overlaid Belly Letter -- one scrambled character per doll */}
       <div
         className="absolute flex items-center justify-center select-none"
         style={{
@@ -826,33 +711,10 @@ function DollBody({
           transform: 'translateY(-1px)'
         }}
       >
-        {theme === 'alphabet' ? (
-          <span className="text-3xl md:text-5xl font-black text-[#1e1b4b] select-none uppercase drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] tracking-normal">
-            {value}
-          </span>
-        ) : (
-          <div className="flex items-center justify-center w-full h-full p-2 relative">
-            {!failedImages[value] ? (
-              <img
-                src={imagePath}
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-contain select-none"
-                alt={value}
-                onError={() => onFailedImage(value)}
-              />
-            ) : (
-              <span className="text-4xl md:text-5xl select-none select-none filter drop-shadow">
-                {getEmojiFallback(value, theme)}
-              </span>
-            )}
-          </div>
-        )}
+        <span className="text-3xl md:text-5xl font-black text-[#1e1b4b] select-none uppercase drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] tracking-normal">
+          {value}
+        </span>
       </div>
-
-      {/* Optional Gold Ring Sparkle inside belly border if it's the target match */}
-      {isMatch && (
-        <div className="absolute top-[61%] left-[42%] w-16 h-16 bg-brand-accent/5 ring-4 ring-brand-accent rounded-full animate-ping pointer-events-none opacity-40" />
-      )}
     </div>
   );
 }

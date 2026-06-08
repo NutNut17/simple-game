@@ -4,6 +4,7 @@ import { Eye, RotateCcw, Image as ImageIcon, MapPin, ArrowLeft, Ghost, LayoutGri
 import { THEMES, GameTheme } from '../constants';
 
 interface TrickyGameProps {
+  theme: 'tricky-sea' | 'tricky-toy';
   title: string;
   subtitle: string;
   onExit: () => void;
@@ -15,12 +16,14 @@ interface Hole {
   id: number;
 }
 
-export default function TrickyGame({ title, subtitle, onExit }: TrickyGameProps) {
+export default function TrickyGame({ theme, title, subtitle, onExit }: TrickyGameProps) {
   const [currentValue, setCurrentValue] = useState('');
   const [holes, setHoles] = useState<Hole[]>([]);
   const [isRevealed, setIsRevealed] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const themeConfig = THEMES['tricky'];
+  const themeConfig = THEMES[theme];
+  // Tricky artwork lives outside themes/, in folders named after the variant (e.g. tricky-image-sea)
+  const imageFolder = `tricky-image-${theme.replace('tricky-', '')}`;
 
   const spawnNewImage = () => {
     const images = themeConfig.images;
@@ -45,7 +48,7 @@ export default function TrickyGame({ title, subtitle, onExit }: TrickyGameProps)
     setHoles(prev => [...prev, { x, y, id: Math.random() }]);
   };
 
-  const imagePath = `${import.meta.env.BASE_URL}tricky-image/${currentValue}.${themeConfig.extension || 'png'}`;
+  const imagePath = `${import.meta.env.BASE_URL}${imageFolder}/${currentValue}.${themeConfig.extension || 'png'}`;
 
   return (
     <div className={`flex-1 flex flex-col ${themeConfig.colors.bg} overflow-hidden relative w-full h-full`}>
