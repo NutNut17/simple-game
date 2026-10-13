@@ -44,7 +44,7 @@ export const THEMES: Record<GameTheme, ThemeConfig> = {
   food: {
     id: 'food',
     label: '🍕 Yummy Food',
-    extension: 'png',
+    extension: 'svg',
     colors: {
       primary: 'bg-orange-600',
       secondary: 'bg-orange-400',
@@ -52,7 +52,7 @@ export const THEMES: Record<GameTheme, ThemeConfig> = {
       bg: 'bg-orange-950',
       border: 'border-orange-700'
     },
-    images: ['pizza', 'burger', 'apple', 'donut', 'cookie', 'taco', 'egg', 'banana']
+    images: ['carrot', 'chicken', 'clam', 'corn', 'cucumber', 'fish', 'sausage', 'marshmallow', 'octopus', 'onion', 'pineapple', 'shrimp', 'squid', 'steak', 'toast-bread'].map(n => `${n}-svgrepo-com`)
   },
   tricky: {
     id: 'tricky',

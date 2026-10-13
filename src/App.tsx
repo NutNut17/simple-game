@@ -1,10 +1,11 @@
 import { motion, AnimatePresence } from 'motion/react';
-import { Gamepad2, Sparkles, Brain, ArrowLeft, Trophy, ChevronRight, LayoutGrid, Grid2X2, Grid3X3, Zap, Eye, Ghost } from 'lucide-react';
+import { Gamepad2, Sparkles, Brain, ArrowLeft, Trophy, ChevronRight, LayoutGrid, Grid2X2, Grid3X3, Zap, Eye, Ghost, Presentation } from 'lucide-react';
 import { useState } from 'react';
 import MemoryGame from './components/MemoryGame';
 import DetectGame from './components/DetectGame';
 import RevealGame from './components/RevealGame';
 import TrickyGame from './components/TrickyGame';
+import FoodSlidesGame from './components/FoodSlidesGame';
 import { THEMES, GameTheme, GridSize } from './constants';
 
 const GAMES = [
@@ -52,11 +53,20 @@ const GAMES = [
     borderColor: 'border-rose-700',
     accentColor: 'text-rose-200',
     icon: <Ghost className="w-10 h-10" />,
+  },
+  {
+    id: 'v6',
+    title: 'Food Review',
+    subtitle: 'slides of every food',
+    color: 'bg-orange-500',
+    borderColor: 'border-orange-700',
+    accentColor: 'text-orange-200',
+    icon: <Presentation className="w-10 h-10" />,
   }
 ];
 
 export default function App() {
-  const [activeGame, setActiveGame] = useState<'v1' | 'v2' | 'v3' | 'v4' | 'v5' | null>(null);
+  const [activeGame, setActiveGame] = useState<'v1' | 'v2' | 'v3' | 'v4' | 'v5' | 'v6' | null>(null);
   const [selectedTheme, setSelectedTheme] = useState<GameTheme>('alphabet');
 
   const currentGame = GAMES.find(g => g.id === activeGame);
@@ -117,7 +127,7 @@ export default function App() {
                 {/* Theme Selector */}
                 <div className="flex flex-wrap justify-center gap-3 mb-8">
                   {Object.values(THEMES)
-                    .filter(t => t.id !== 'tricky' && t.id !== 'food')
+                    .filter(t => t.id !== 'tricky')
                     .map((t) => (
                     <button
                       key={t.id}
@@ -189,6 +199,12 @@ export default function App() {
                   title={currentGame?.title || ''}
                   subtitle={currentGame?.subtitle || ''}
                   onExit={() => setActiveGame(null)} 
+                />
+              ) : activeGame === 'v6' ? (
+                <FoodSlidesGame
+                  title={currentGame?.title || ''}
+                  subtitle={currentGame?.subtitle || ''}
+                  onExit={() => setActiveGame(null)}
                 />
               ) : activeGame === 'v5' ? (
                 <TrickyGame 
