@@ -6,6 +6,8 @@ import DetectGame from './components/DetectGame';
 import RevealGame from './components/RevealGame';
 import TrickyGame from './components/TrickyGame';
 import FoodSlidesGame from './components/FoodSlidesGame';
+import RussianDollGame from './components/RussianDollGame';
+import TetrisGame from './components/TetrisGame';
 import { THEMES, GameTheme, GridSize } from './constants';
 
 const GAMES = [
@@ -47,7 +49,16 @@ const GAMES = [
   },
   {
     id: 'v5',
-    title: 'Tricky Reveal',
+    title: 'Tricky Sea',
+    subtitle: "shadow vs reality",
+    color: 'bg-rose-500',
+    borderColor: 'border-rose-700',
+    accentColor: 'text-rose-200',
+    icon: <Ghost className="w-10 h-10" />,
+  },
+  {
+    id: 'v8',
+    title: 'Tricky Toys',
     subtitle: "shadow vs reality",
     color: 'bg-rose-500',
     borderColor: 'border-rose-700',
@@ -56,6 +67,24 @@ const GAMES = [
   },
   {
     id: 'v6',
+    title: 'Russian Doll',
+    subtitle: 'nesting shapes',
+    color: 'bg-emerald-500',
+    borderColor: 'border-emerald-700',
+    accentColor: 'text-emerald-200',
+    icon: <Grid2X2 className="w-10 h-10" />,
+  },
+  {
+    id: 'v7',
+    title: 'Russian Tetris',
+    subtitle: 'classic blocks',
+    color: 'bg-indigo-500',
+    borderColor: 'border-indigo-700',
+    accentColor: 'text-indigo-200',
+    icon: <LayoutGrid className="w-10 h-10" />,
+  },
+  {
+    id: 'v9',
     title: 'Food Review',
     subtitle: 'slides of every food',
     color: 'bg-orange-500',
@@ -66,7 +95,7 @@ const GAMES = [
 ];
 
 export default function App() {
-  const [activeGame, setActiveGame] = useState<'v1' | 'v2' | 'v3' | 'v4' | 'v5' | 'v6' | null>(null);
+  const [activeGame, setActiveGame] = useState<'v1' | 'v2' | 'v3' | 'v4' | 'v5' | 'v6' | 'v7' | 'v8' | 'v9' | null>(null);
   const [selectedTheme, setSelectedTheme] = useState<GameTheme>('alphabet');
 
   const currentGame = GAMES.find(g => g.id === activeGame);
@@ -127,7 +156,7 @@ export default function App() {
                 {/* Theme Selector */}
                 <div className="flex flex-wrap justify-center gap-3 mb-8">
                   {Object.values(THEMES)
-                    .filter(t => t.id !== 'tricky')
+                    .filter(t => t.id !== 'tricky-sea' && t.id !== 'tricky-toy')
                     .map((t) => (
                     <button
                       key={t.id}
@@ -200,14 +229,35 @@ export default function App() {
                   subtitle={currentGame?.subtitle || ''}
                   onExit={() => setActiveGame(null)} 
                 />
-              ) : activeGame === 'v6' ? (
+              ) : activeGame === 'v9' ? (
                 <FoodSlidesGame
                   title={currentGame?.title || ''}
                   subtitle={currentGame?.subtitle || ''}
                   onExit={() => setActiveGame(null)}
                 />
               ) : activeGame === 'v5' ? (
-                <TrickyGame 
+                <TrickyGame
+                  theme="tricky-sea"
+                  title={currentGame?.title || ''}
+                  subtitle={currentGame?.subtitle || ''}
+                  onExit={() => setActiveGame(null)}
+                />
+              ) : activeGame === 'v8' ? (
+                <TrickyGame
+                  theme="tricky-toy"
+                  title={currentGame?.title || ''}
+                  subtitle={currentGame?.subtitle || ''}
+                  onExit={() => setActiveGame(null)}
+                />
+              ) : activeGame === 'v6' ? (
+                <RussianDollGame 
+                  theme={selectedTheme} 
+                  title={currentGame?.title || ''}
+                  subtitle={currentGame?.subtitle || ''}
+                  onExit={() => setActiveGame(null)} 
+                />
+              ) : activeGame === 'v7' ? (
+                <TetrisGame 
                   title={currentGame?.title || ''}
                   subtitle={currentGame?.subtitle || ''}
                   onExit={() => setActiveGame(null)} 
